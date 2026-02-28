@@ -68,7 +68,7 @@ global.hituet = 0
 global.vercelToken = "I0417Ilreb5TXyjSPC7eAdXP" //Your Vercel Token
 
 //——————————[ Manage GitHub ]——————————//
-global.githubToken = "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" //Your GitHub Token
+global.githubToken = "" //Your GitHub Token
 global.githubUsername = "NeoS-Labs" //Your GitHub Username
 
 //——————————[ Manage Api Panel ]——————————//
