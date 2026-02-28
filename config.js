@@ -69,7 +69,7 @@ global.vercelToken = "I0417Ilreb5TXyjSPC7eAdXP" //Your Vercel Token
 
 //——————————[ Manage GitHub ]——————————//
 global.githubToken = "" //Your GitHub Token
-global.githubUsername = "NeoS-Labs" //Your GitHub Username
+global.githubUsername = "" //Your GitHub Username
 
 //——————————[ Manage Api Panel ]——————————//
 global.egg = "15" // Isi id egg
