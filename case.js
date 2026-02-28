@@ -359,6 +359,37 @@ module.exports = dapz = async (dapz, m, chatUpdate, store) => {
       return new Promise(resolve => setTimeout(resolve, ms))
     }
 
+    // =====================
+    // AUTO JPM HANDLER
+    // =====================
+    if (global.autoJpm?.active && m.isGroup && !m.key.fromMe) {
+      // Cek apakah durasi sudah habis
+      if (global.autoJpm.endTime && Date.now() > global.autoJpm.endTime) {
+        global.autoJpm.active = false
+        console.log('Auto JPM selesai (durasi habis)')
+      } else {
+        const now = Date.now()
+        if (!global.autoJpm.lastSent) global.autoJpm.lastSent = {}
+        const lastSent = global.autoJpm.lastSent[m.chat] || 0
+        const delayAutoJpm = global.autoJpm.delay || (5 * 60 * 1000) // default 5 menit
+
+        if (now - lastSent >= delayAutoJpm && !BlJpm.includes(m.chat)) {
+          try {
+            const JpmData = JSON.parse(fs.readFileSync('./Data/jpm.json'))
+            if (JpmData.text) {
+              const autoJpmContent = JpmData.image
+                ? { image: { url: JpmData.image }, caption: JpmData.text }
+                : { text: JpmData.text }
+              await dapz.sendMessage(m.chat, autoJpmContent)
+              global.autoJpm.lastSent[m.chat] = now
+            }
+          } catch (e) {
+            console.log('Auto JPM error:', e.message)
+          }
+        }
+      }
+    }
+
     const func = {
       capital: (text) => {
         return text ? text.replace(/\b\w/g, l => l.toUpperCase()) : '';
@@ -7651,6 +7682,77 @@ Status : Succes Sending Bug In Target`)
           reply(`🛑 Task ${taskId} telah dihentikan`)
         } else {
           reply(`❌ Task dengan ID ${taskId} tidak ditemukan`)
+        }
+      }
+        break
+
+      case "autojpm": {
+        if (!isOwner) return reply(mess.owner)
+        if (!text) return reply(`*Cara penggunaan Auto JPM:*
+
+*${prefix}autojpm on* — Aktifkan tanpa batas waktu
+*${prefix}autojpm on 1 jam* — Aktifkan selama 1 jam
+*${prefix}autojpm on 30 menit* — Aktifkan selama 30 menit
+*${prefix}autojpm off* — Matikan auto JPM
+*${prefix}autojpm delay 3* — Set delay 3 menit per grup
+*${prefix}autojpm status* — Cek status auto JPM
+
+> Pastikan sudah set teks JPM dengan *${prefix}setjpm*`)
+
+        const argsAuto = text.toLowerCase().trim().split(/\s+/)
+        const aksiAuto = argsAuto[0]
+
+        if (aksiAuto === 'on') {
+          const JpmCheck = JSON.parse(fs.readFileSync('./Data/jpm.json'))
+          if (!JpmCheck.text) return reply(`JPM belum di-setting!\nKetik *${prefix}setjpm teks* untuk setting dulu.`)
+
+          if (!global.autoJpm) global.autoJpm = {}
+          global.autoJpm.active = true
+          global.autoJpm.lastSent = {}
+          global.autoJpm.delay = global.autoJpm.delay || (5 * 60 * 1000)
+
+          // Parse durasi jika ada
+          const durText = argsAuto.slice(1).join(' ')
+          if (durText) {
+            let durMs = 0
+            if (durText.includes('jam')) {
+              const jam = parseInt(durText)
+              if (!isNaN(jam) && jam > 0) durMs = jam * 60 * 60 * 1000
+            } else if (durText.includes('menit')) {
+              const menit = parseInt(durText)
+              if (!isNaN(menit) && menit > 0) durMs = menit * 60 * 1000
+            }
+            if (durMs > 0) {
+              global.autoJpm.endTime = Date.now() + durMs
+              reply(`✅ Auto JPM *AKTIF* selama *${durText}*\nDelay: *${(global.autoJpm.delay / 60000).toFixed(0)} menit* per grup\n\nBot akan otomatis kirim teks JPM ke setiap grup saat ada pesan masuk.\nKetik *${prefix}autojpm off* untuk matikan.`)
+            } else {
+              return reply('Format durasi salah! Contoh: *on 1 jam* atau *on 30 menit*')
+            }
+          } else {
+            global.autoJpm.endTime = null // tanpa batas
+            reply(`✅ Auto JPM *AKTIF* (tanpa batas waktu)\nDelay: *${(global.autoJpm.delay / 60000).toFixed(0)} menit* per grup\n\nBot akan otomatis kirim teks JPM ke setiap grup saat ada pesan masuk.\nKetik *${prefix}autojpm off* untuk matikan.`)
+          }
+        } else if (aksiAuto === 'off') {
+          if (!global.autoJpm) global.autoJpm = {}
+          global.autoJpm.active = false
+          global.autoJpm.lastSent = {}
+          global.autoJpm.endTime = null
+          reply('❌ Auto JPM telah *DIMATIKAN*')
+        } else if (aksiAuto === 'delay') {
+          const menit = parseInt(argsAuto[1])
+          if (isNaN(menit) || menit < 1) return reply('Masukkan jumlah menit! Contoh: *delay 3*')
+          if (!global.autoJpm) global.autoJpm = {}
+          global.autoJpm.delay = menit * 60 * 1000
+          reply(`✅ Delay auto JPM diubah ke *${menit} menit* per grup`)
+        } else if (aksiAuto === 'status') {
+          if (!global.autoJpm?.active) return reply('❌ Auto JPM sedang *TIDAK AKTIF*')
+          const sisaWaktu = global.autoJpm.endTime
+            ? `${Math.max(0, Math.floor((global.autoJpm.endTime - Date.now()) / 60000))} menit lagi`
+            : 'Tanpa batas waktu'
+          const totalGrup = Object.keys(global.autoJpm.lastSent || {}).length
+          reply(`✅ *Status Auto JPM:*\n\n• Status: *AKTIF*\n• Delay: *${(global.autoJpm.delay / 60000).toFixed(0)} menit* per grup\n• Sisa waktu: *${sisaWaktu}*\n• Grup terkirim: *${totalGrup} grup*`)
+        } else {
+          reply(`Perintah tidak dikenali. Ketik *${prefix}autojpm* untuk melihat bantuan.`)
         }
       }
         break
