@@ -1,0 +1,7 @@
+{
+  "welcome": {},
+  "leave": {},
+  "promote": true,
+  "demote": true,
+  "background": "./connect.js/bg.jpg"
+}
